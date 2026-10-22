@@ -1,0 +1,115 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all unknown collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isOwner(ownerId) {
+      return isSignedIn() && request.auth.uid == ownerId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'h55247527@gmail.com'
+      );
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'name', 'email']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.email is string && data.email.size() > 0 && data.email.size() <= 150;
+    }
+
+    function isValidCard(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'cardTypeId', 'personName', 'status']) &&
+        data.id is string && data.id.size() <= 64 &&
+        data.ownerId is string && data.ownerId.size() <= 128 &&
+        data.cardTypeId is string && data.cardTypeId.size() <= 64 &&
+        data.personName is string && data.personName.size() > 0 && data.personName.size() <= 120 &&
+        data.status is string && (data.status == 'active' || data.status == 'draft' || data.status == 'expired' || data.status == 'archived');
+    }
+
+    function isValidBrandKit(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'name', 'organizationName', 'primaryColor']) &&
+        data.id is string && data.id.size() <= 64 &&
+        data.ownerId is string && data.ownerId.size() <= 128 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.organizationName is string && data.organizationName.size() <= 150 &&
+        data.primaryColor is string && data.primaryColor.size() <= 30;
+    }
+
+    function isValidVerification(data) {
+      return data.keys().hasAll(['cardId', 'ownerId', 'personName', 'status']) &&
+        data.cardId is string && data.cardId.size() <= 64 &&
+        data.ownerId is string && data.ownerId.size() <= 128 &&
+        data.personName is string && data.personName.size() <= 120 &&
+        data.status is string && (data.status == 'active' || data.status == 'draft' || data.status == 'expired' || data.status == 'archived');
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow read, create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'h55247527@gmail.com'
+      );
+    }
+
+    // 2. Private Cards Collection
+    match /cards/{cardId} {
+      allow get: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(cardId) && isValidCard(incoming()) && incoming().ownerId == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(cardId) && isValidCard(incoming()) && resource.data.ownerId == request.auth.uid && incoming().ownerId == existing().ownerId;
+      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // 3. Organization Brand Kits Collection
+    match /brandKits/{brandKitId} {
+      allow get, list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(brandKitId) && isValidBrandKit(incoming()) && incoming().ownerId == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(brandKitId) && isValidBrandKit(incoming()) && resource.data.ownerId == request.auth.uid && incoming().ownerId == existing().ownerId;
+      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // 4. Public QR Verification Index (Sanitized Metadata)
+    match /verifications/{cardId} {
+      // Anyone can verify a single card by its exact ID (e.g. scanning the physical QR)
+      allow get: if true;
+      // Disallow open listing to prevent enumeration/scraping
+      allow list: if false;
+      allow create: if isSignedIn() && isValidId(cardId) && isValidVerification(incoming()) && incoming().ownerId == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(cardId) && isValidVerification(incoming()) && resource.data.ownerId == request.auth.uid && incoming().ownerId == existing().ownerId;
+      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // 5. Admin role lookup
+    match /admins/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if false;
+    }
+  }
+}

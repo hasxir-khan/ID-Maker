@@ -1,0 +1,118 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile registered in ID Maker",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "format": "email", "maxLength": 150 },
+        "organization": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "maxLength": 100 },
+        "plan": { "type": "string", "enum": ["free", "professional", "enterprise"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "email"]
+    },
+    "Card": {
+      "title": "Card",
+      "description": "Identification card credential created and managed by an authenticated user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "cardTypeId": { "type": "string", "maxLength": 64 },
+        "templateId": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 150 },
+        "personName": { "type": "string", "maxLength": 120 },
+        "organizationName": { "type": "string", "maxLength": 150 },
+        "orientation": { "type": "string", "enum": ["horizontal", "vertical"] },
+        "dimensions": { "type": "object" },
+        "fieldValues": { "type": "object" },
+        "cardSubtypeLevel": { "type": "string", "maxLength": 64 },
+        "customFields": { "type": "array" },
+        "photoUrl": { "type": "string", "maxLength": 1500000 },
+        "logoUrl": { "type": "string", "maxLength": 1500000 },
+        "signatureUrl": { "type": "string", "maxLength": 1500000 },
+        "studentSignatureUrl": { "type": "string", "maxLength": 1500000 },
+        "principalSignatureUrl": { "type": "string", "maxLength": 1500000 },
+        "elements": { "type": "array" },
+        "status": { "type": "string", "enum": ["active", "draft", "expired", "archived"] },
+        "issueDate": { "type": "string", "maxLength": 20 },
+        "expiryDate": { "type": "string", "maxLength": 20 },
+        "issuedBy": { "type": "string", "maxLength": 150 },
+        "qrConfig": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "ownerId", "cardTypeId", "personName", "status"]
+    },
+    "BrandKit": {
+      "title": "BrandKit",
+      "description": "Organization brand assets, palette, and typography defaults",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "organizationName": { "type": "string", "maxLength": 150 },
+        "tagline": { "type": "string", "maxLength": 200 },
+        "primaryColor": { "type": "string", "maxLength": 30 },
+        "secondaryColor": { "type": "string", "maxLength": 30 },
+        "accentColor": { "type": "string", "maxLength": 30 },
+        "fontFamily": { "type": "string", "maxLength": 60 },
+        "address": { "type": "string", "maxLength": 300 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 150 },
+        "website": { "type": "string", "maxLength": 250 },
+        "logoUrl": { "type": "string", "maxLength": 1500000 },
+        "signatureUrl": { "type": "string", "maxLength": 1500000 },
+        "defaultOrientation": { "type": "string", "enum": ["horizontal", "vertical"] },
+        "defaultTemplateId": { "type": "string", "maxLength": 64 },
+        "isDefault": { "type": "boolean" }
+      },
+      "required": ["id", "ownerId", "name", "organizationName", "primaryColor"]
+    },
+    "PublicCardVerification": {
+      "title": "PublicCardVerification",
+      "description": "Public credential verification metadata for QR verification gateway",
+      "type": "object",
+      "properties": {
+        "cardId": { "type": "string", "maxLength": 64 },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "personName": { "type": "string", "maxLength": 120 },
+        "organizationName": { "type": "string", "maxLength": 150 },
+        "cardTypeId": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["active", "draft", "expired", "archived"] },
+        "issueDate": { "type": "string", "maxLength": 20 },
+        "expiryDate": { "type": "string", "maxLength": 20 },
+        "issuedBy": { "type": "string", "maxLength": 150 },
+        "photoUrl": { "type": "string", "maxLength": 1500000 },
+        "department": { "type": "string", "maxLength": 120 },
+        "sha256Hash": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["cardId", "ownerId", "personName", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "User profile collection isolated per authenticated user"
+    },
+    "/cards/{cardId}": {
+      "schema": { "$ref": "Card" },
+      "description": "Private identification cards collection strictly owned and accessed by card creator"
+    },
+    "/brandKits/{brandKitId}": {
+      "schema": { "$ref": "BrandKit" },
+      "description": "Organization brand kits owned by the authenticated user"
+    },
+    "/verifications/{cardId}": {
+      "schema": { "$ref": "PublicCardVerification" },
+      "description": "Sanitized public credential verification index for QR validation"
+    }
+  }
+}

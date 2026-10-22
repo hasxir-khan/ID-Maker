@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Isolated user asset storage for ID cards (photos, logos, signatures)
+    match /users/{userId}/{allPaths=**} {
+      // Allow public read so that generated ID cards, downloads, and public verification records can render cardholder photos and logos
+      allow read: if true;
+
+      // Allow write only by the authenticated owner of the asset
+      allow write: if request.auth != null 
+                   && request.auth.uid == userId
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+
+      // Allow delete only by the authenticated owner
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
